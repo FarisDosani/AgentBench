@@ -18,6 +18,14 @@ Run the API:
 uvicorn app.main:app --reload
 ```
 
+## CLI
+
+Run a local benchmark through OmniRoute:
+
+```powershell
+python -m app.cli run --name "Test Agent" --model "MODEL_ID"
+```
+
 Run the tests:
 
 ```powershell
