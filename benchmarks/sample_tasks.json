@@ -1,0 +1,23 @@
+[
+  {
+    "id": "arithmetic-1",
+    "name": "Basic arithmetic",
+    "description": "Solve a simple addition problem.",
+    "input": "What is 17 + 25?",
+    "expected_output": "42"
+  },
+  {
+    "id": "text-1",
+    "name": "Uppercase transformation",
+    "description": "Convert the supplied text to uppercase.",
+    "input": "agent benchmark",
+    "expected_output": "AGENT BENCHMARK"
+  },
+  {
+    "id": "instruction-1",
+    "name": "Factual instruction following",
+    "description": "Answer the factual question with only the requested city name.",
+    "input": "Name the capital of France.",
+    "expected_output": "Paris"
+  }
+]
