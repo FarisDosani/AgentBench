@@ -3,6 +3,7 @@ import argparse
 from app.models.agent import AgentConfig
 from app.services.benchmark_runner import BenchmarkRunner
 from app.services.evaluator import ExactMatchEvaluator
+from app.services.gemini_executor import GeminiExecutor
 from app.services.omniroute_executor import OmniRouteExecutor
 from app.services.result_store import ResultStore
 from app.services.runner import AgentRunner
@@ -13,9 +14,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m app.cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    run_parser = subparsers.add_parser("run", help="Run a benchmark through OmniRoute")
+    run_parser = subparsers.add_parser(
+        "run", help="Run a benchmark through the selected provider"
+    )
     run_parser.add_argument("--name", required=True, help="Agent display name")
-    run_parser.add_argument("--model", required=True, help="OmniRoute model ID")
+    run_parser.add_argument("--model", required=True, help="Provider model ID")
+    run_parser.add_argument(
+        "--provider",
+        choices=["gemini", "omniroute"],
+        default="gemini",
+    )
     run_parser.add_argument("--system-prompt", default=None)
     run_parser.add_argument("--temperature", type=float, default=0.0)
     run_parser.add_argument("--max-tokens", type=int, default=1024)
@@ -34,7 +42,8 @@ def run_benchmark(args: argparse.Namespace) -> int:
         max_tokens=args.max_tokens,
     )
     tasks = TaskLoader.load_directory(args.benchmarks)
-    runner = AgentRunner(OmniRouteExecutor())
+    executor = GeminiExecutor() if args.provider == "gemini" else OmniRouteExecutor()
+    runner = AgentRunner(executor)
     benchmark_runner = BenchmarkRunner(runner, ExactMatchEvaluator())
     result = benchmark_runner.run(agent, tasks)
     saved_path = ResultStore(args.results).save(result)
@@ -53,9 +62,7 @@ def run_benchmark(args: argparse.Namespace) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command == "run":
-        return run_benchmark(args)
-    return 0
+    return run_benchmark(args)
 
 
 if __name__ == "__main__":

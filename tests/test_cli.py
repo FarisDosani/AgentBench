@@ -34,7 +34,12 @@ def test_run_command_uses_defaults_executes_saves_and_prints_summary(
         return "expected"
 
     monkeypatch.setattr(cli.TaskLoader, "load_directory", load_directory)
-    monkeypatch.setattr(cli, "OmniRouteExecutor", lambda: fake_executor)
+    monkeypatch.setattr(cli, "GeminiExecutor", lambda: fake_executor)
+    monkeypatch.setattr(
+        cli,
+        "OmniRouteExecutor",
+        lambda: (_ for _ in ()).throw(AssertionError("OmniRoute must not be selected")),
+    )
 
     exit_code = cli.main(
         ["run", "--name", "Agent A", "--model", "MODEL_ID"]
@@ -77,11 +82,13 @@ def test_run_command_applies_custom_values_and_paths(
         return "expected"
 
     monkeypatch.setattr(cli.TaskLoader, "load_directory", load_directory)
-    monkeypatch.setattr(cli, "OmniRouteExecutor", lambda: fake_executor)
+    monkeypatch.setattr(cli, "GeminiExecutor", lambda: fake_executor)
 
     exit_code = cli.main(
         [
             "run",
+            "--provider",
+            "gemini",
             "--name",
             "Custom Agent",
             "--model",
@@ -108,3 +115,43 @@ def test_run_command_applies_custom_values_and_paths(
     assert agent.temperature == 0.7
     assert agent.max_tokens == 256
     assert len(list(results_path.glob("*.json"))) == 1
+
+
+def test_omniroute_provider_selects_omniroute_executor(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    captured: dict[str, Any] = {"calls": 0}
+    monkeypatch.setattr(
+        cli.TaskLoader,
+        "load_directory",
+        lambda path: [make_task()],
+    )
+
+    def fake_executor(agent: AgentConfig, task: BenchmarkTask) -> str:
+        captured["calls"] += 1
+        return "expected"
+
+    monkeypatch.setattr(cli, "OmniRouteExecutor", lambda: fake_executor)
+    monkeypatch.setattr(
+        cli,
+        "GeminiExecutor",
+        lambda: (_ for _ in ()).throw(AssertionError("Gemini must not be selected")),
+    )
+
+    exit_code = cli.main(
+        [
+            "run",
+            "--provider",
+            "omniroute",
+            "--name",
+            "OmniRoute Agent",
+            "--model",
+            "auto/best-coding",
+            "--results",
+            str(tmp_path / "results"),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["calls"] == 1
