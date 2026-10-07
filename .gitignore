@@ -3,3 +3,5 @@ __pycache__/
 .pytest_cache/
 .env
 *.pyc
+results/*.json
+!results/.gitkeep
