@@ -36,10 +36,26 @@ class OmniRouteExecutor:
         )
         messages.append({"role": "user", "content": user_prompt})
 
+        return self.complete_messages(
+            messages,
+            model=agent.model,
+            temperature=agent.temperature,
+            max_tokens=agent.max_tokens,
+        )
+
+    def complete_messages(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        model: str,
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+    ) -> str:
+
         payload: dict[str, Any] = {
-            "model": agent.model,
-            "temperature": agent.temperature,
-            "max_tokens": agent.max_tokens,
+            "model": model,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
             "messages": messages,
             "stream": False,
         }

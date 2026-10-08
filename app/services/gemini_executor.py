@@ -24,9 +24,6 @@ class GeminiExecutor:
         self.client = httpx.Client(timeout=self.timeout_seconds)
 
     def __call__(self, agent: AgentConfig, task: BenchmarkTask) -> str:
-        if not self.api_key.strip():
-            raise ValueError("Gemini API key is required")
-
         model = agent.model or self.default_model
         user_prompt = (
             f"Task:\n{task.description}\n\n"
@@ -34,22 +31,50 @@ class GeminiExecutor:
             "Return only the final answer. Do not include explanation, reasoning, "
             "markdown, labels, or extra text."
         )
+        messages: list[dict[str, str]] = []
+        if agent.system_prompt is not None:
+            messages.append({"role": "system", "content": agent.system_prompt})
+        messages.append({"role": "user", "content": user_prompt})
+        return self.complete_messages(
+            messages,
+            model=model,
+            temperature=agent.temperature,
+            max_tokens=agent.max_tokens,
+        )
+
+    def complete_messages(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        model: str,
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+    ) -> str:
+        if not self.api_key.strip():
+            raise ValueError("Gemini API key is required")
+
+        system_parts = [
+            {"text": message["content"]}
+            for message in messages
+            if message["role"] == "system"
+        ]
+        contents = [
+            {
+                "role": "model" if message["role"] == "assistant" else "user",
+                "parts": [{"text": message["content"]}],
+            }
+            for message in messages
+            if message["role"] != "system"
+        ]
         payload: dict[str, Any] = {
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [{"text": user_prompt}],
-                }
-            ],
+            "contents": contents,
             "generationConfig": {
-                "temperature": agent.temperature,
-                "maxOutputTokens": agent.max_tokens,
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
             },
         }
-        if agent.system_prompt is not None:
-            payload["systemInstruction"] = {
-                "parts": [{"text": agent.system_prompt}]
-            }
+        if system_parts:
+            payload["systemInstruction"] = {"parts": system_parts}
 
         response = self.client.post(
             "https://generativelanguage.googleapis.com/"

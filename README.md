@@ -75,6 +75,24 @@ Build the local image before running coding benchmarks:
 docker build -f docker/agentbench-python.Dockerfile -t agentbench-python .
 ```
 
+Run one coding strategy:
+
+```powershell
+python -m app.cli coding-run --task easy-arithmetic-helper --provider gemini --model gemini-3.5-flash --strategy direct
+```
+
+Omit `--strategy` to compare Direct, Planner/Executor, and Reviewer strategies:
+
+```powershell
+python -m app.cli coding-run --task medium-account-validation --provider gemini --model gemini-3.5-flash
+```
+
+Direct uses one coding-agent loop. Planner/Executor creates and executes an ordered
+plan. Reviewer adds bounded feedback and revision. All strategies run visible and
+hidden tests in separate copied workspaces, detect regressions, and report runtime,
+tool calls, and patch metrics. Hidden test output is never included in CLI or API
+responses.
+
 ## Tests
 
 ```powershell
