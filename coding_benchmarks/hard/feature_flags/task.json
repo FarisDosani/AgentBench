@@ -1,0 +1,13 @@
+{
+  "id": "hard-feature-flags",
+  "name": "Implement atomic feature flag updates",
+  "description": "Repair the feature flag parser, storage, and service. Definitions must support comments and surrounding whitespace, accept only on or off values, and reject duplicates. Batch updates must validate every name and boolean value before persisting anything, preserve unspecified flags, and leave stored state unchanged when validation fails.",
+  "repository_path": "repo",
+  "difficulty": "hard",
+  "visible_test_command": "pytest -q tests",
+  "hidden_test_command": "pytest -q hidden_tests",
+  "allowed_tools": ["list_files", "read_file", "search_repo", "write_file"],
+  "timeout_seconds": 300,
+  "expected_files_changed": ["featureflags/parser.py", "featureflags/storage.py", "featureflags/service.py"],
+  "metadata": {"category": "atomic-state", "language": "python"}
+}
