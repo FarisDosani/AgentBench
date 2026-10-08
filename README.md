@@ -66,6 +66,15 @@ Add tasks to JSON files under `benchmarks/`, run a provider through the CLI or A
 and inspect the generated JSON under `results/`. Generated result files are ignored
 by Git; `results/.gitkeep` preserves the directory.
 
+## Docker coding environment
+
+Coding tasks use an isolated image with networking disabled and bounded CPU and memory.
+Build the local image before running coding benchmarks:
+
+```powershell
+docker build -f docker/agentbench-python.Dockerfile -t agentbench-python .
+```
+
 ## Tests
 
 ```powershell
