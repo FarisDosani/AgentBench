@@ -84,6 +84,30 @@ uvicorn app.main:app --reload
 The API exposes task listing, benchmark execution, saved-result access, and result
 comparison under `/api`. Health status is available at `/health`.
 
+API documentation is available at `http://127.0.0.1:8000/docs`.
+
+## Frontend
+
+The Next.js dashboard browses coding tasks, configures provider and strategy runs,
+and displays safe test summaries and coding metrics. Start the backend first:
+
+```powershell
+uvicorn app.main:app --reload
+```
+
+Then start the frontend in a second terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. The frontend uses
+`NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` by default; copy
+`frontend/.env.example` to `frontend/.env.local` to override it. Provider API keys
+remain in the backend environment and are never sent to the browser.
+
 ## Benchmark workflow
 
 Add tasks to JSON files under `benchmarks/`, run a provider through the CLI or API,

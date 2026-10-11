@@ -24,6 +24,36 @@ def make_task(task_id: str = "task-1") -> BenchmarkTask:
     )
 
 
+@pytest.mark.parametrize(
+    "origin",
+    ["http://localhost:3000", "http://127.0.0.1:3000"],
+)
+def test_frontend_development_origins_are_allowed(origin: str) -> None:
+    response = client.options(
+        "/api/coding/tasks",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
+
+def test_unlisted_cors_origin_is_not_allowed() -> None:
+    response = client.options(
+        "/api/coding/tasks",
+        headers={
+            "Origin": "https://example.com",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "access-control-allow-origin" not in response.headers
+
+
 def make_run(
     agent_name: str = "api-agent",
     score: float = 1.0,
