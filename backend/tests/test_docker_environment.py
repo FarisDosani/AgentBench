@@ -53,9 +53,11 @@ def test_build_command_and_unavailable_error(tmp_path: Path, monkeypatch) -> Non
     environment = DockerEnvironment(tmp_path, image="custom-image")
     environment.build_image()
     build_command, build_kwargs = calls[1]
+    backend_root = Path(__file__).resolve().parents[1]
     assert build_command[:2] == ["docker", "build"]
-    assert "agentbench-python.Dockerfile" in build_command[3]
+    assert Path(build_command[3]) == backend_root / "docker" / "agentbench-python.Dockerfile"
     assert ["-t", "custom-image"] == build_command[4:6]
+    assert Path(build_command[-1]) == backend_root
     assert build_kwargs.get("shell") is not True
 
     monkeypatch.setattr(environment, "is_docker_available", lambda: False)

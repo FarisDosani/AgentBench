@@ -1,10 +1,35 @@
+# Python environments and bytecode
 venv/
+.venv/
 __pycache__/
+*.py[cod]
+
+# Python test and coverage output
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets and local environment files
 .env
-*.pyc
-results/*.json
-!results/.gitkeep
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Frontend dependencies and build output
 frontend/node_modules/
 frontend/.next/
-frontend/.env.local
+frontend/out/
+
+# Generated benchmark results
+results/*.json
+!results/.gitkeep
+
+# Temporary benchmark workspaces and logs
+agentbench-*/
+*.log
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

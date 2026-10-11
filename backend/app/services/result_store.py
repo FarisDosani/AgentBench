@@ -4,10 +4,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.models.benchmark import BenchmarkRunResult
+from app.core.paths import RESULTS_DIRECTORY
 
 
 class ResultStore:
-    def __init__(self, directory: str | Path = "results") -> None:
+    def __init__(self, directory: str | Path = RESULTS_DIRECTORY) -> None:
         self.directory = Path(directory)
 
     def save(

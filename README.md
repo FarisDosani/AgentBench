@@ -1,101 +1,52 @@
 # AgentBench
 
-AgentBench is a small FastAPI and command-line benchmark runner for evaluating LLM
-agents against deterministic tasks. It supports direct Gemini and OpenRouter
-execution plus an OpenAI-compatible local OmniRoute provider.
+AgentBench is a benchmark platform for evaluating LLM agents on deterministic
+tasks and repository-level software engineering work. It combines a FastAPI
+backend, isolated Docker execution, multiple coding-agent strategies, and a
+Next.js dashboard.
 
-## Architecture
+## Project structure
 
-Benchmark tasks are loaded from JSON and executed by an `AgentRunner` using the
-selected provider. `ExactMatchEvaluator` scores each response, `BenchmarkRunner`
-aggregates the results, and `ResultStore` saves them as JSON. The comparison service
-ranks saved benchmark runs by score, latency, and agent name.
+```text
+AgentBench/
+├── backend/
+│   ├── app/                 FastAPI, CLI, models, services, and strategies
+│   ├── benchmarks/          Generic benchmark tasks
+│   ├── coding_benchmarks/   Repository-level coding fixtures
+│   ├── docker/              Isolated Python benchmark image
+│   ├── scripts/             Real end-to-end validation
+│   ├── tests/               Backend test suite
+│   ├── .env.example
+│   ├── pytest.ini
+│   └── requirements.txt
+├── frontend/                Next.js dashboard
+├── results/                 Generated generic benchmark results
+└── README.md
+```
 
-## Setup
+## Backend setup
 
 ```powershell
+cd backend
 python -m venv venv
-.\venv\Scripts\Activate.ps1
+venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-Create a local `.env` file with the provider settings you need. Do not commit real
-keys.
-
-## Environment variables
-
-- `APP_NAME` — FastAPI application name.
-- `APP_ENV` — application environment label.
-- `GEMINI_API_KEY` — Gemini API key.
-- `GEMINI_MODEL` — fallback Gemini model.
-- `OMNIROUTE_BASE_URL` — OmniRoute OpenAI-compatible base URL.
-- `OMNIROUTE_API_KEY` — optional OmniRoute API key.
-- `OMNIROUTE_TIMEOUT_SECONDS` — provider request timeout in seconds.
-- `OPENROUTER_BASE_URL` — OpenRouter API base URL; defaults to
-  `https://openrouter.ai/api/v1`.
-- `OPENROUTER_API_KEY` — OpenRouter API key.
-
-Example OpenRouter `.env` values:
-
-```dotenv
-OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-OPENROUTER_API_KEY=your_key_here
-```
-
-## Gemini usage
-
-```powershell
-python -m app.cli run --provider gemini --name "Gemini Agent" --model "gemini-3.5-flash"
-```
-
-## OmniRoute usage
-
-```powershell
-python -m app.cli run --provider omniroute --name "OmniRoute Agent" --model "auto/best-coding"
-```
-
-## OpenRouter usage
-
-Generic benchmark:
-
-```powershell
-python -m app.cli run --provider openrouter --name "OpenRouter Agent" --model "MODEL_ID"
-```
-
-Coding benchmark:
-
-```powershell
-python -m app.cli coding-run --provider openrouter --task easy-arithmetic-helper --model "MODEL_ID" --strategy direct
-```
-
-## CLI
-
-The `run` command also accepts `--system-prompt`, `--temperature`, `--max-tokens`,
-`--benchmarks`, and `--results`. Gemini is the default provider.
-
-## API
-
-Start the API:
-
-```powershell
+copy .env.example .env
 uvicorn app.main:app --reload
 ```
 
-The API exposes task listing, benchmark execution, saved-result access, and result
-comparison under `/api`. Health status is available at `/health`.
+The API documentation is available at `http://127.0.0.1:8000/docs`.
 
-API documentation is available at `http://127.0.0.1:8000/docs`.
+Provider configuration belongs in `backend/.env`. Available settings are:
 
-## Frontend
+- `GEMINI_API_KEY` and `GEMINI_MODEL`
+- `OPENROUTER_BASE_URL` and `OPENROUTER_API_KEY`
+- `OMNIROUTE_BASE_URL`, `OMNIROUTE_API_KEY`, and
+  `OMNIROUTE_TIMEOUT_SECONDS`
 
-The Next.js dashboard browses coding tasks, configures provider and strategy runs,
-and displays safe test summaries and coding metrics. Start the backend first:
+Do not commit real API keys.
 
-```powershell
-uvicorn app.main:app --reload
-```
-
-Then start the frontend in a second terminal:
+## Frontend setup
 
 ```powershell
 cd frontend
@@ -103,73 +54,67 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`. The frontend uses
-`NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` by default; copy
-`frontend/.env.example` to `frontend/.env.local` to override it. Provider API keys
-remain in the backend environment and are never sent to the browser.
+Open `http://localhost:3000`. The dashboard calls the FastAPI service using
+`NEXT_PUBLIC_API_BASE_URL`, which defaults to `http://127.0.0.1:8000` in
+`frontend/.env.example`. Provider APIs are never called directly from the
+browser.
 
-## Benchmark workflow
+## CLI
 
-Add tasks to JSON files under `benchmarks/`, run a provider through the CLI or API,
-and inspect the generated JSON under `results/`. Generated result files are ignored
-by Git; `results/.gitkeep` preserves the directory.
+Run a generic benchmark from `backend/`:
+
+```powershell
+python -m app.cli run --provider openrouter --name "OpenRouter Agent" --model "MODEL_ID"
+```
+
+Run a coding benchmark:
+
+```powershell
+python -m app.cli coding-run --provider openrouter --task easy-arithmetic-helper --model "openai/gpt-4o-mini" --strategy direct
+```
+
+Supported providers are Gemini, OpenRouter, and OmniRoute. Coding benchmarks
+support Direct, Planner / Executor, and Reviewer strategies.
 
 ## Docker coding environment
 
-Coding tasks use an isolated image with networking disabled and bounded CPU and memory.
-Build the local image before running coding benchmarks:
+From `backend/`, build the isolated image with:
 
 ```powershell
 docker build -f docker/agentbench-python.Dockerfile -t agentbench-python .
 ```
 
-Run one coding strategy:
+The runtime disables networking and applies CPU and memory limits. Each strategy
+operates on its own copied workspace; hidden tests remain inaccessible to agents,
+and visible benchmark tests are read-only.
+
+## Real coding validation
+
+With Docker running and the selected provider configured, run from `backend/`:
 
 ```powershell
-python -m app.cli coding-run --task easy-arithmetic-helper --provider gemini --model gemini-3.5-flash --strategy direct
+python scripts/validate_coding_benchmark.py --task easy-arithmetic-helper --provider openrouter --model "openai/gpt-4o-mini" --strategy direct
 ```
 
-Omit `--strategy` to compare Direct, Planner/Executor, and Reviewer strategies:
-
-```powershell
-python -m app.cli coding-run --task medium-account-validation --provider gemini --model gemini-3.5-flash
-```
-
-Direct uses one coding-agent loop. Planner/Executor creates and executes an ordered
-plan. Reviewer adds bounded feedback and revision. All strategies run visible and
-hidden tests in separate copied workspaces, detect regressions, and report runtime,
-tool calls, and patch metrics. Hidden test output is never included in CLI or API
-responses.
-
-## Real end-to-end validation
-
-Real validation requires Docker Desktop or Docker Engine to be running and the API
-key for the selected provider in the local environment. Build the isolated coding
-image first:
-
-```powershell
-docker build -f docker/agentbench-python.Dockerfile -t agentbench-python .
-```
-
-Then validate an easy task through the production Gemini and Docker pipeline:
-
-```powershell
-python scripts/validate_coding_benchmark.py --task easy-arithmetic-helper --provider gemini --model gemini-3.5-flash --strategy direct
-```
-
-OpenRouter validation:
-
-```powershell
-python scripts/validate_coding_benchmark.py --task easy-arithmetic-helper --provider openrouter --model "MODEL_ID" --strategy direct
-```
-
-The validator snapshots the original fixture and runs baseline and post-change
-tests in copied workspaces, so the checked-in benchmark fixture remains unchanged.
-Use `--keep-workspace` to preserve and print the isolated workspace path for local
-debugging.
+The validator checks baseline failure, executes the production strategy pipeline,
+runs post-change visible and hidden tests, checks regressions, and verifies that
+the original fixture remains unchanged. Add `--keep-workspace` to preserve the
+isolated copy for local debugging.
 
 ## Tests
+
+Run the backend suite from `backend/`:
 
 ```powershell
 pytest
 ```
+
+Build the frontend from `frontend/`:
+
+```powershell
+npm install
+npm run build
+```
+
+Generated result JSON files are stored in the root `results/` directory and are
+ignored by Git.

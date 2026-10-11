@@ -1,6 +1,11 @@
 import argparse
 import sys
 
+from app.core.paths import (
+    BENCHMARK_DIRECTORY,
+    CODING_BENCHMARK_DIRECTORY,
+    RESULTS_DIRECTORY,
+)
 from app.models.agent import AgentConfig
 from app.services.benchmark_runner import BenchmarkRunner
 from app.services.coding_benchmark_runner import CodingBenchmarkRunner
@@ -34,8 +39,8 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--system-prompt", default=None)
     run_parser.add_argument("--temperature", type=float, default=0.0)
     run_parser.add_argument("--max-tokens", type=int, default=1024)
-    run_parser.add_argument("--benchmarks", default="benchmarks")
-    run_parser.add_argument("--results", default="results")
+    run_parser.add_argument("--benchmarks", default=BENCHMARK_DIRECTORY)
+    run_parser.add_argument("--results", default=RESULTS_DIRECTORY)
 
     coding_parser = subparsers.add_parser(
         "coding-run", help="Run an isolated coding-agent benchmark"
@@ -52,7 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         help="Strategy name; repeat or provide comma-separated names",
     )
-    coding_parser.add_argument("--benchmarks", default="coding_benchmarks")
+    coding_parser.add_argument("--benchmarks", default=CODING_BENCHMARK_DIRECTORY)
     coding_parser.add_argument("--docker-image", default="agentbench-python")
     coding_parser.add_argument("--max-iterations", type=int, default=20)
     coding_parser.add_argument("--keep-workspaces", action="store_true")

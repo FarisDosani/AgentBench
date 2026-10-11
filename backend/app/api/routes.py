@@ -13,6 +13,7 @@ from app.models.coding_api import (
 )
 from app.models.coding_task import CodingTask
 from app.models.task import BenchmarkTask
+from app.core.paths import BENCHMARK_DIRECTORY, CODING_BENCHMARK_DIRECTORY
 from app.services.benchmark_runner import BenchmarkRunner
 from app.services.coding_benchmark_runner import CodingBenchmarkRunner
 from app.services.coding_llm_adapter import create_coding_llm_adapter
@@ -30,7 +31,6 @@ from app.services.task_loader import TaskLoader
 
 
 router = APIRouter(prefix="/api")
-CODING_BENCHMARK_DIRECTORY = "coding_benchmarks"
 
 
 def _validate_result_filename(filename: str) -> str:
@@ -48,7 +48,7 @@ def _validate_result_filename(filename: str) -> str:
 
 @router.get("/tasks", response_model=list[BenchmarkTask])
 def list_tasks() -> list[BenchmarkTask]:
-    return TaskLoader.load_directory("benchmarks")
+    return TaskLoader.load_directory(BENCHMARK_DIRECTORY)
 
 
 @router.post("/benchmarks/run", response_model=BenchmarkRunResult)
@@ -56,7 +56,7 @@ def run_benchmark(
     agent: AgentConfig,
     provider: Literal["gemini", "omniroute", "openrouter"] = "omniroute",
 ) -> BenchmarkRunResult:
-    tasks = TaskLoader.load_directory("benchmarks")
+    tasks = TaskLoader.load_directory(BENCHMARK_DIRECTORY)
     executors = {
         "gemini": GeminiExecutor,
         "omniroute": OmniRouteExecutor,

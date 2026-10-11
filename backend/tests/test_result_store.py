@@ -7,6 +7,7 @@ from app.models.benchmark import BenchmarkRunResult, BenchmarkTaskResult
 from app.models.evaluation import EvaluationResult
 from app.models.result import AgentRunResult
 from app.services.result_store import ResultStore
+from app.core.paths import RESULTS_DIRECTORY
 
 
 def make_benchmark_result(agent_name: str = "Test Agent") -> BenchmarkRunResult:
@@ -37,6 +38,10 @@ def make_benchmark_result(agent_name: str = "Test Agent") -> BenchmarkRunResult:
             )
         ],
     )
+
+
+def test_default_directory_is_root_results_directory() -> None:
+    assert ResultStore().directory == RESULTS_DIRECTORY
 
 
 def test_save_creates_directory_and_valid_json_file(tmp_path) -> None:

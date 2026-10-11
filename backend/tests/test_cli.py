@@ -22,6 +22,7 @@ def test_run_command_uses_defaults_executes_saves_and_prints_summary(
     capsys,
 ) -> None:
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(cli, "RESULTS_DIRECTORY", tmp_path / "results")
     captured: dict[str, Any] = {"calls": 0}
 
     def load_directory(path: str) -> list[BenchmarkTask]:
@@ -52,7 +53,7 @@ def test_run_command_uses_defaults_executes_saves_and_prints_summary(
 
     agent = captured["agent"]
     assert exit_code == 0
-    assert captured["benchmark_path"] == "benchmarks"
+    assert captured["benchmark_path"] == cli.BENCHMARK_DIRECTORY
     assert captured["calls"] == 1
     assert agent.name == "Agent A"
     assert agent.model == "MODEL_ID"

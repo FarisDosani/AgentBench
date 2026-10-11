@@ -11,6 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.models.coding_benchmark_run import StrategyBenchmarkResult
 from app.models.coding_task import CodingTask
 from app.models.test_result import CodingTestResult
+from app.core.paths import BACKEND_ROOT, CODING_BENCHMARK_DIRECTORY
 from app.services.coding_benchmark_runner import CodingBenchmarkRunner
 from app.services.coding_llm_adapter import create_coding_llm_adapter
 from app.services.coding_metrics import CodingMetricsCollector
@@ -42,7 +43,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--docker-image", default="agentbench-python")
     parser.add_argument("--max-iterations", type=int, default=20)
     parser.add_argument("--keep-workspace", action="store_true")
-    parser.add_argument("--benchmarks", default="coding_benchmarks", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--benchmarks",
+        default=CODING_BENCHMARK_DIRECTORY,
+        help=argparse.SUPPRESS,
+    )
     return parser
 
 
@@ -55,7 +60,7 @@ def snapshot_repository(path: str | Path) -> dict[str, bytes]:
 
 
 def check_docker(image: str) -> tuple[bool, bool]:
-    environment = DockerEnvironment(Path.cwd(), image=image, timeout_seconds=30)
+    environment = DockerEnvironment(BACKEND_ROOT, image=image, timeout_seconds=30)
     available = environment.is_docker_available()
     return available, available and environment.is_image_available()
 
