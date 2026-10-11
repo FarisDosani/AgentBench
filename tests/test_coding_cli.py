@@ -160,6 +160,32 @@ def test_explicit_omniroute_and_repeatable_comma_strategies(
     assert captured["keep_workspaces"] is True
 
 
+def test_openrouter_provider_uses_shared_coding_pipeline(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    captured = install_cli_fakes(monkeypatch, tmp_path, make_result())
+
+    exit_code = cli.main(
+        [
+            "coding-run",
+            "--task",
+            "easy-task",
+            "--provider",
+            "openrouter",
+            "--model",
+            "provider/model",
+            "--strategy",
+            "direct",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["provider"] == "openrouter"
+    assert captured["model"] == "provider/model"
+    assert captured["strategies"] == ["direct"]
+
+
 def test_all_failed_returns_one(tmp_path: Path, monkeypatch) -> None:
     install_cli_fakes(monkeypatch, tmp_path, make_result(False))
     assert cli.main(["coding-run", "--task", "easy-task", "--model", "m"]) == 1

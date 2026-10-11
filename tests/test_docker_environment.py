@@ -63,6 +63,27 @@ def test_build_command_and_unavailable_error(tmp_path: Path, monkeypatch) -> Non
         environment.build_image()
 
 
+def test_image_availability_uses_docker_inspect(tmp_path: Path, monkeypatch) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run(command: list[str], **kwargs: Any) -> SimpleNamespace:
+        calls.append(command)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    environment = DockerEnvironment(tmp_path, image="custom-image")
+
+    assert environment.is_image_available() is True
+    assert calls == [["docker", "image", "inspect", "custom-image"]]
+
+    monkeypatch.setattr(
+        subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=1),
+    )
+    assert environment.is_image_available() is False
+
+
 def test_run_command_is_isolated_and_returns_output(tmp_path: Path, monkeypatch) -> None:
     captured: dict[str, Any] = {}
 
@@ -79,6 +100,15 @@ def test_run_command_is_isolated_and_returns_output(tmp_path: Path, monkeypatch)
     assert command[command.index("--network") + 1] == "none"
     assert command[command.index("--memory") + 1] == "512m"
     assert command[command.index("--cpus") + 1] == "1"
+    environment_values = [
+        command[index + 1]
+        for index, value in enumerate(command)
+        if value == "--env"
+    ]
+    assert environment_values == [
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PYTHONPATH=/workspace",
+    ]
     assert command[command.index("--workdir") + 1] == "/workspace"
     assert f"source={tmp_path.resolve()}" in command[command.index("--mount") + 1]
     assert command[-2:] == ["pytest", "-q"]

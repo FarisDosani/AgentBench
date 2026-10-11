@@ -153,6 +153,30 @@ def test_run_benchmark_uses_mocked_executor_and_saves_result(
     assert len(temporary_store.list_results()) == 1
 
 
+def test_generic_benchmark_accepts_openrouter_provider(
+    temporary_store: ResultStore,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        routes.TaskLoader,
+        "load_directory",
+        lambda path: [make_task()],
+    )
+
+    def fake_executor(agent: AgentConfig, task: BenchmarkTask) -> str:
+        return "expected"
+
+    monkeypatch.setattr(routes, "OpenRouterExecutor", lambda: fake_executor)
+
+    response = client.post(
+        "/api/benchmarks/run?provider=openrouter",
+        json={"name": "openrouter-agent", "model": "provider/model"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["passed_tasks"] == 1
+
+
 def test_existing_health_route_still_works() -> None:
     response = client.get("/health")
 

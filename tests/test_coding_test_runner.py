@@ -52,6 +52,17 @@ def test_visible_pass_and_command_parsing() -> None:
     assert result.all_passed is True
 
 
+def test_run_visible_executes_only_visible_command() -> None:
+    environment = FakeEnvironment([command_result(stdout="visible only")])
+    task = make_task("pytest hidden-secret -q")
+
+    result = CodingTestRunner(environment).run_visible(task)  # type: ignore[arg-type]
+
+    assert environment.commands == [["pytest", "tests/test visible.py", "-q"]]
+    assert result.stdout == "visible only"
+    assert result.passed is True
+
+
 def test_visible_failure_and_timeout() -> None:
     environment = FakeEnvironment([command_result(-1, timed_out=True)])
     result = CodingTestRunner(environment).run_baseline(make_task())  # type: ignore[arg-type]

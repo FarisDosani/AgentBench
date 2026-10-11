@@ -4,7 +4,9 @@ from pathlib import Path
 import pytest
 
 from app.models.coding_task import CodingTask
-from app.services.coding_llm_adapter import CodingLLMAdapter
+from app.models.docker_result import DockerCommandResult
+from app.services import coding_llm_adapter
+from app.services.coding_llm_adapter import CodingLLMAdapter, create_coding_llm_adapter
 from app.services.coding_strategy_factory import CodingStrategyFactory
 from app.strategies.direct import DirectStrategy
 from app.strategies.planner_executor import PlannerExecutorStrategy
@@ -20,7 +22,7 @@ def make_task(workspace: Path) -> CodingTask:
         difficulty="medium",
         visible_test_command="pytest -q tests",
         hidden_test_command="pytest -q hidden-secret",
-        allowed_tools=["read_file", "write_file"],
+        allowed_tools=["read_file", "write_file", "run_tests"],
         timeout_seconds=123,
     )
 
@@ -71,9 +73,67 @@ def test_factory_constructs_all_strategies_with_context(tmp_path: Path) -> None:
     assert isinstance(planner, PlannerExecutorStrategy)
     assert isinstance(reviewer, ReviewerStrategy)
     assert direct.agent_runner.max_iterations == 7
-    assert direct.agent_runner.toolset.allowed_tools == {"read_file", "write_file"}
+    assert direct.agent_runner.toolset.allowed_tools == {
+        "read_file",
+        "write_file",
+        "run_tests",
+    }
+    assert direct.agent_runner.toolset.has_tool("run_tests") is True
     assert direct.test_runner.environment.image == "custom"
     assert direct.test_runner.environment.timeout_seconds == 123
+
+
+def test_factory_run_tests_tool_executes_only_fixed_visible_command(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    task = make_task(tmp_path)
+    strategy = CodingStrategyFactory(FakeLLM([])).direct(task, tmp_path)
+    commands: list[list[str]] = []
+
+    def run_command(command: list[str]) -> DockerCommandResult:
+        commands.append(command)
+        return DockerCommandResult(
+            exit_code=1,
+            stdout="VISIBLE FAILURE",
+            stderr="VISIBLE ERROR",
+            timed_out=False,
+            duration_ms=1,
+        )
+
+    monkeypatch.setattr(strategy.test_runner.environment, "run_command", run_command)
+
+    output = strategy.agent_runner.toolset.execute("run_tests")
+
+    assert commands == [["pytest", "-q", "tests"]]
+    assert output == {
+        "exit_code": 1,
+        "passed": False,
+        "timed_out": False,
+        "stdout": "VISIBLE FAILURE",
+        "stderr": "VISIBLE ERROR",
+    }
+    assert "hidden-secret" not in str(output)
+
+
+def test_openrouter_adapter_flows_through_strategy_factory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Provider:
+        def complete_messages(self, messages, **kwargs):
+            return '{"type":"final","answer":"done"}'
+
+    provider = Provider()
+    monkeypatch.setattr(coding_llm_adapter, "OpenRouterExecutor", lambda: provider)
+    adapter = create_coding_llm_adapter("openrouter", "provider/model")
+    factory = CodingStrategyFactory(adapter)
+
+    strategy = factory.direct(make_task(tmp_path), tmp_path)
+
+    assert adapter.provider is provider
+    assert adapter.model == "provider/model"
+    assert strategy.agent_runner.llm is adapter
 
 
 def test_planner_and_reviewer_parse_strict_json_without_hidden_data(tmp_path: Path) -> None:

@@ -35,13 +35,17 @@ def make_executor(
     handler: Callable[[httpx.Request], httpx.Response],
     *,
     api_key: str = "test-gemini-key",
+    max_rate_limit_retries: int = 2,
 ) -> GeminiExecutor:
     client = httpx.Client(transport=httpx.MockTransport(handler))
     monkeypatch.setattr(
         "app.services.gemini_executor.httpx.Client",
         lambda **kwargs: client,
     )
-    return GeminiExecutor(api_key=api_key)
+    return GeminiExecutor(
+        api_key=api_key,
+        max_rate_limit_retries=max_rate_limit_retries,
+    )
 
 
 def test_request_and_multi_part_response(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -142,6 +146,72 @@ def test_http_error_propagates(monkeypatch: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(httpx.HTTPStatusError):
         executor(make_agent(), make_task())
+
+
+def test_rate_limit_retries_using_server_delay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_count = 0
+    delays: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        if request_count == 1:
+            return httpx.Response(429, headers={"Retry-After": "0"})
+        return httpx.Response(
+            200,
+            json={"candidates": [{"content": {"parts": [{"text": "Answer"}]}}]},
+        )
+
+    monkeypatch.setattr(
+        "app.services.gemini_executor.time.sleep",
+        lambda delay: delays.append(delay),
+    )
+    executor = make_executor(monkeypatch, handler)
+
+    assert executor(make_agent(), make_task()) == "Answer"
+    assert request_count == 2
+    assert delays == [0.0]
+
+
+def test_rate_limit_retry_metadata_and_exhaustion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request_count = 0
+    delays: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        request_count += 1
+        return httpx.Response(
+            429,
+            json={
+                "error": {
+                    "details": [
+                        {
+                            "@type": "type.googleapis.com/google.rpc.RetryInfo",
+                            "retryDelay": "0.25s",
+                        }
+                    ]
+                }
+            },
+        )
+
+    monkeypatch.setattr(
+        "app.services.gemini_executor.time.sleep",
+        lambda delay: delays.append(delay),
+    )
+    executor = make_executor(
+        monkeypatch,
+        handler,
+        max_rate_limit_retries=1,
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        executor(make_agent(), make_task())
+    assert request_count == 2
+    assert delays == [0.25]
 
 
 @pytest.mark.parametrize("response_json", [{}, {"candidates": []}])

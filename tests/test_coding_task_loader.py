@@ -89,3 +89,4 @@ def test_all_shipped_coding_benchmarks_are_complete() -> None:
     assert all((Path(task.repository_path) / "hidden_tests").is_dir() for task in tasks)
     assert all(task.visible_test_command.startswith("pytest") for task in tasks)
     assert all(task.is_hidden_test_enabled for task in tasks)
+    assert all("run_tests" in task.allowed_tools for task in tasks)

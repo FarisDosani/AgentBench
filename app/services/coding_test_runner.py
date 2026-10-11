@@ -13,6 +13,9 @@ class CodingTestRunner:
     def run_baseline(self, task: CodingTask) -> CodingTestResult:
         return self._run(task, baseline=None)
 
+    def run_visible(self, task: CodingTask) -> TestCommandResult:
+        return self._execute(task.visible_test_command)
+
     def run_after_changes(
         self,
         task: CodingTask,
@@ -25,7 +28,7 @@ class CodingTestRunner:
         task: CodingTask,
         baseline: CodingTestResult | None,
     ) -> CodingTestResult:
-        visible = self._execute(task.visible_test_command)
+        visible = self.run_visible(task)
         hidden = (
             self._execute(task.hidden_test_command)
             if task.is_hidden_test_enabled and task.hidden_test_command is not None

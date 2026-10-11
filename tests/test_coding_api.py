@@ -198,6 +198,25 @@ def test_default_provider_and_invalid_request_validation(tmp_path: Path, monkeyp
     assert invalid_strategy.status_code == 422
 
 
+def test_openrouter_provider_is_accepted(tmp_path: Path, monkeypatch) -> None:
+    captured = install_api_fakes(monkeypatch, tmp_path)
+
+    response = client.post(
+        "/api/coding/run",
+        json={
+            "task_id": "coding-task",
+            "provider": "openrouter",
+            "model": "provider/model",
+            "strategies": ["direct"],
+        },
+    )
+
+    assert response.status_code == 200
+    assert captured["provider"] == "openrouter"
+    assert captured["model"] == "provider/model"
+    assert captured["strategies"] == ["direct"]
+
+
 def test_existing_generic_endpoints_still_work() -> None:
     assert client.get("/health").json() == {"status": "healthy"}
     assert client.get("/").json() == {"message": "AgentBench"}

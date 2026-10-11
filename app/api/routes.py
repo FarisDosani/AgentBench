@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, HTTPException
 
@@ -20,7 +21,9 @@ from app.services.coding_strategy_factory import CodingStrategyFactory
 from app.services.coding_task_loader import CodingTaskLoader
 from app.services.comparison_service import ComparisonService
 from app.services.evaluator import ExactMatchEvaluator
+from app.services.gemini_executor import GeminiExecutor
 from app.services.omniroute_executor import OmniRouteExecutor
+from app.services.openrouter_executor import OpenRouterExecutor
 from app.services.result_store import ResultStore
 from app.services.runner import AgentRunner
 from app.services.task_loader import TaskLoader
@@ -49,9 +52,17 @@ def list_tasks() -> list[BenchmarkTask]:
 
 
 @router.post("/benchmarks/run", response_model=BenchmarkRunResult)
-def run_benchmark(agent: AgentConfig) -> BenchmarkRunResult:
+def run_benchmark(
+    agent: AgentConfig,
+    provider: Literal["gemini", "omniroute", "openrouter"] = "omniroute",
+) -> BenchmarkRunResult:
     tasks = TaskLoader.load_directory("benchmarks")
-    runner = AgentRunner(OmniRouteExecutor())
+    executors = {
+        "gemini": GeminiExecutor,
+        "omniroute": OmniRouteExecutor,
+        "openrouter": OpenRouterExecutor,
+    }
+    runner = AgentRunner(executors[provider]())
     benchmark_runner = BenchmarkRunner(runner, ExactMatchEvaluator())
     result = benchmark_runner.run(agent, tasks)
     ResultStore().save(result)

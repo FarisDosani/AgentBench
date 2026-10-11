@@ -28,7 +28,7 @@ class CodingTaskSummary(BaseModel):
 
 class CodingBenchmarkRequest(BaseModel):
     task_id: NonEmptyStr
-    provider: Literal["gemini", "omniroute"] = "gemini"
+    provider: Literal["gemini", "omniroute", "openrouter"] = "gemini"
     model: NonEmptyStr
     strategies: list[StrategyName] | None = None
     max_iterations: Annotated[int, Field(gt=0)] = 20

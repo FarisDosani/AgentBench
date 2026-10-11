@@ -40,6 +40,11 @@ def test_run_command_uses_defaults_executes_saves_and_prints_summary(
         "OmniRouteExecutor",
         lambda: (_ for _ in ()).throw(AssertionError("OmniRoute must not be selected")),
     )
+    monkeypatch.setattr(
+        cli,
+        "OpenRouterExecutor",
+        lambda: (_ for _ in ()).throw(AssertionError("OpenRouter must not be selected")),
+    )
 
     exit_code = cli.main(
         ["run", "--name", "Agent A", "--model", "MODEL_ID"]
@@ -155,3 +160,49 @@ def test_omniroute_provider_selects_omniroute_executor(
 
     assert exit_code == 0
     assert captured["calls"] == 1
+
+
+def test_openrouter_provider_selects_openrouter_executor(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    captured: dict[str, Any] = {"calls": 0}
+    monkeypatch.setattr(
+        cli.TaskLoader,
+        "load_directory",
+        lambda path: [make_task()],
+    )
+
+    def fake_executor(agent: AgentConfig, task: BenchmarkTask) -> str:
+        captured["calls"] += 1
+        captured["model"] = agent.model
+        return "expected"
+
+    monkeypatch.setattr(cli, "OpenRouterExecutor", lambda: fake_executor)
+    monkeypatch.setattr(
+        cli,
+        "GeminiExecutor",
+        lambda: (_ for _ in ()).throw(AssertionError("Gemini must not be selected")),
+    )
+    monkeypatch.setattr(
+        cli,
+        "OmniRouteExecutor",
+        lambda: (_ for _ in ()).throw(AssertionError("OmniRoute must not be selected")),
+    )
+
+    exit_code = cli.main(
+        [
+            "run",
+            "--provider",
+            "openrouter",
+            "--name",
+            "OpenRouter Agent",
+            "--model",
+            "provider/model",
+            "--results",
+            str(tmp_path / "results"),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == {"calls": 1, "model": "provider/model"}

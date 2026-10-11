@@ -59,6 +59,19 @@ class DockerEnvironment:
         if completed.returncode != 0:
             raise RuntimeError(f"Docker image build failed: {completed.stderr}")
 
+    def is_image_available(self) -> bool:
+        try:
+            completed = subprocess.run(
+                ["docker", "image", "inspect", self.image],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self.timeout_seconds,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return completed.returncode == 0
+
     def run_command(self, command: list[str]) -> DockerCommandResult:
         docker_command = [
             "docker",
@@ -70,6 +83,10 @@ class DockerEnvironment:
             "512m",
             "--cpus",
             "1",
+            "--env",
+            "PYTHONDONTWRITEBYTECODE=1",
+            "--env",
+            "PYTHONPATH=/workspace",
             "--mount",
             f"type=bind,source={self.workspace_path},target=/workspace",
             "--workdir",

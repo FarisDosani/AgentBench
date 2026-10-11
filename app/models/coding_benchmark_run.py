@@ -2,6 +2,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, StringConstraints, model_validator
 
+from app.models.coding_agent import CodingAgentResult
 from app.models.coding_metrics import CodingMetrics
 from app.models.coding_task import TaskDifficulty
 from app.models.test_result import CodingTestResult
@@ -14,6 +15,8 @@ class StrategyBenchmarkResult(BaseModel):
     strategy_name: NonEmptyStr
     task_id: NonEmptyStr
     success: bool
+    agent_success: bool = False
+    agent_result: CodingAgentResult | None = None
     test_result: CodingTestResult
     metrics: CodingMetrics
     workspace_path: str

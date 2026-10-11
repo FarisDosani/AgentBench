@@ -49,11 +49,27 @@ class CodingStrategyFactory:
         workspace_path: Path,
     ) -> tuple[CodingAgentRunner, CodingTestRunner]:
         workspace = RepositoryWorkspace(workspace_path)
-        toolset = CodingToolset(workspace, task.allowed_tools)
         environment = DockerEnvironment(
             workspace_path,
             image=self.docker_image,
             timeout_seconds=task.timeout_seconds,
+        )
+        test_runner = CodingTestRunner(environment)
+
+        def run_visible_tests() -> dict[str, object]:
+            result = test_runner.run_visible(task)
+            return {
+                "exit_code": result.exit_code,
+                "passed": result.passed,
+                "timed_out": result.timed_out,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+            }
+
+        toolset = CodingToolset(
+            workspace,
+            task.allowed_tools,
+            run_tests_callback=run_visible_tests,
         )
         return (
             CodingAgentRunner(
@@ -61,7 +77,7 @@ class CodingStrategyFactory:
                 toolset,
                 max_iterations=self.max_iterations,
             ),
-            CodingTestRunner(environment),
+            test_runner,
         )
 
     def _planner(self, task: CodingTask) -> AgentPlan:

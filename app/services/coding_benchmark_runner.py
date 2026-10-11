@@ -132,6 +132,8 @@ class CodingBenchmarkRunner:
                 strategy_name=strategy_name,
                 task_id=original_task.id,
                 success=success,
+                agent_success=agent_result.success,
+                agent_result=agent_result,
                 test_result=test_result,
                 metrics=metrics,
                 workspace_path=str(workspace_path),

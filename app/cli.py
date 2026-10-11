@@ -11,6 +11,7 @@ from app.services.coding_task_loader import CodingTaskLoader
 from app.services.evaluator import ExactMatchEvaluator
 from app.services.gemini_executor import GeminiExecutor
 from app.services.omniroute_executor import OmniRouteExecutor
+from app.services.openrouter_executor import OpenRouterExecutor
 from app.services.result_store import ResultStore
 from app.services.runner import AgentRunner
 from app.services.task_loader import TaskLoader
@@ -27,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--model", required=True, help="Provider model ID")
     run_parser.add_argument(
         "--provider",
-        choices=["gemini", "omniroute"],
+        choices=["gemini", "omniroute", "openrouter"],
         default="gemini",
     )
     run_parser.add_argument("--system-prompt", default=None)
@@ -41,7 +42,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     coding_parser.add_argument("--task", required=True, help="Coding task ID")
     coding_parser.add_argument(
-        "--provider", choices=["gemini", "omniroute"], default="gemini"
+        "--provider",
+        choices=["gemini", "omniroute", "openrouter"],
+        default="gemini",
     )
     coding_parser.add_argument("--model", required=True, help="Provider model ID")
     coding_parser.add_argument(
@@ -66,7 +69,12 @@ def run_benchmark(args: argparse.Namespace) -> int:
         max_tokens=args.max_tokens,
     )
     tasks = TaskLoader.load_directory(args.benchmarks)
-    executor = GeminiExecutor() if args.provider == "gemini" else OmniRouteExecutor()
+    executors = {
+        "gemini": GeminiExecutor,
+        "omniroute": OmniRouteExecutor,
+        "openrouter": OpenRouterExecutor,
+    }
+    executor = executors[args.provider]()
     runner = AgentRunner(executor)
     benchmark_runner = BenchmarkRunner(runner, ExactMatchEvaluator())
     result = benchmark_runner.run(agent, tasks)

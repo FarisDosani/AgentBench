@@ -2,6 +2,7 @@ from typing import Protocol
 
 from app.services.gemini_executor import GeminiExecutor
 from app.services.omniroute_executor import OmniRouteExecutor
+from app.services.openrouter_executor import OpenRouterExecutor
 
 
 class MessageCompletionProvider(Protocol):
@@ -42,6 +43,8 @@ def create_coding_llm_adapter(provider: str, model: str) -> CodingLLMAdapter:
         executor: MessageCompletionProvider = GeminiExecutor()
     elif provider == "omniroute":
         executor = OmniRouteExecutor()
+    elif provider == "openrouter":
+        executor = OpenRouterExecutor()
     else:
         raise ValueError(f"Unsupported coding provider: {provider}")
     return CodingLLMAdapter(executor, model)

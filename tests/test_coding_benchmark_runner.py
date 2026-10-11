@@ -166,6 +166,8 @@ def test_all_strategies_are_isolated_ordered_and_cleaned(tmp_path: Path) -> None
     assert list(Path(task.repository_path).glob("direct.py")) == []
     assert task.model_dump() == original_dump
     assert result.difficulty is TaskDifficulty.HARD
+    assert all(item.agent_success for item in result.strategy_results)
+    assert all(item.agent_result is not None for item in result.strategy_results)
     assert all(item.metrics.files_changed == 1 for item in result.strategy_results)
     assert all(item.metrics.patch_size == 1 for item in result.strategy_results)
 
@@ -262,6 +264,9 @@ def test_strategy_exception_does_not_stop_remaining_strategies(tmp_path: Path) -
 
     assert received == ["direct", "planner_executor", "reviewer"]
     assert result.strategy_results[0].success is False
+    assert result.strategy_results[0].agent_success is False
+    assert result.strategy_results[0].agent_result is not None
+    assert "exploded" in (result.strategy_results[0].agent_result.error or "")
     assert result.strategy_results[0].error == "RuntimeError: exploded"
     assert result.strategy_results[0].metrics.failure_category.value == "agent_error"
     assert result.strategy_results[1].success is True

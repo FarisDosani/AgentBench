@@ -1,8 +1,8 @@
 # AgentBench
 
 AgentBench is a small FastAPI and command-line benchmark runner for evaluating LLM
-agents against deterministic tasks. It supports direct Gemini execution and an
-OpenAI-compatible local OmniRoute provider.
+agents against deterministic tasks. It supports direct Gemini and OpenRouter
+execution plus an OpenAI-compatible local OmniRoute provider.
 
 ## Architecture
 
@@ -31,6 +31,16 @@ keys.
 - `OMNIROUTE_BASE_URL` — OmniRoute OpenAI-compatible base URL.
 - `OMNIROUTE_API_KEY` — optional OmniRoute API key.
 - `OMNIROUTE_TIMEOUT_SECONDS` — provider request timeout in seconds.
+- `OPENROUTER_BASE_URL` — OpenRouter API base URL; defaults to
+  `https://openrouter.ai/api/v1`.
+- `OPENROUTER_API_KEY` — OpenRouter API key.
+
+Example OpenRouter `.env` values:
+
+```dotenv
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_API_KEY=your_key_here
+```
 
 ## Gemini usage
 
@@ -42,6 +52,20 @@ python -m app.cli run --provider gemini --name "Gemini Agent" --model "gemini-3.
 
 ```powershell
 python -m app.cli run --provider omniroute --name "OmniRoute Agent" --model "auto/best-coding"
+```
+
+## OpenRouter usage
+
+Generic benchmark:
+
+```powershell
+python -m app.cli run --provider openrouter --name "OpenRouter Agent" --model "MODEL_ID"
+```
+
+Coding benchmark:
+
+```powershell
+python -m app.cli coding-run --provider openrouter --task easy-arithmetic-helper --model "MODEL_ID" --strategy direct
 ```
 
 ## CLI
@@ -92,6 +116,33 @@ plan. Reviewer adds bounded feedback and revision. All strategies run visible an
 hidden tests in separate copied workspaces, detect regressions, and report runtime,
 tool calls, and patch metrics. Hidden test output is never included in CLI or API
 responses.
+
+## Real end-to-end validation
+
+Real validation requires Docker Desktop or Docker Engine to be running and the API
+key for the selected provider in the local environment. Build the isolated coding
+image first:
+
+```powershell
+docker build -f docker/agentbench-python.Dockerfile -t agentbench-python .
+```
+
+Then validate an easy task through the production Gemini and Docker pipeline:
+
+```powershell
+python scripts/validate_coding_benchmark.py --task easy-arithmetic-helper --provider gemini --model gemini-3.5-flash --strategy direct
+```
+
+OpenRouter validation:
+
+```powershell
+python scripts/validate_coding_benchmark.py --task easy-arithmetic-helper --provider openrouter --model "MODEL_ID" --strategy direct
+```
+
+The validator snapshots the original fixture and runs baseline and post-change
+tests in copied workspaces, so the checked-in benchmark fixture remains unchanged.
+Use `--keep-workspace` to preserve and print the isolated workspace path for local
+debugging.
 
 ## Tests
 

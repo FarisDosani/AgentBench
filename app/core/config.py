@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     OMNIROUTE_TIMEOUT_SECONDS: float = 60.0
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_API_KEY: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 

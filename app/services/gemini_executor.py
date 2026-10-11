@@ -1,3 +1,4 @@
+import time
 from typing import Any
 
 import httpx
@@ -13,7 +14,10 @@ class GeminiExecutor:
         api_key: str | None = None,
         default_model: str | None = None,
         timeout_seconds: float | None = None,
+        max_rate_limit_retries: int = 2,
     ) -> None:
+        if max_rate_limit_retries < 0:
+            raise ValueError("max_rate_limit_retries must be non-negative")
         self.api_key = settings.GEMINI_API_KEY if api_key is None else api_key
         self.default_model = default_model or settings.GEMINI_MODEL
         self.timeout_seconds = (
@@ -21,6 +25,7 @@ class GeminiExecutor:
             if timeout_seconds is None
             else timeout_seconds
         )
+        self.max_rate_limit_retries = max_rate_limit_retries
         self.client = httpx.Client(timeout=self.timeout_seconds)
 
     def __call__(self, agent: AgentConfig, task: BenchmarkTask) -> str:
@@ -76,15 +81,15 @@ class GeminiExecutor:
         if system_parts:
             payload["systemInstruction"] = {"parts": system_parts}
 
-        response = self.client.post(
+        url = (
             "https://generativelanguage.googleapis.com/"
-            f"v1beta/models/{model}:generateContent",
-            json=payload,
-            headers={
-                "Content-Type": "application/json",
-                "x-goog-api-key": self.api_key,
-            },
+            f"v1beta/models/{model}:generateContent"
         )
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.api_key,
+        }
+        response = self._post_with_rate_limit_retry(url, payload, headers)
         response.raise_for_status()
         response_data = response.json()
 
@@ -110,3 +115,41 @@ class GeminiExecutor:
         if not text:
             raise ValueError("Gemini response text is missing")
         return text
+
+    def _post_with_rate_limit_retry(
+        self,
+        url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str],
+    ) -> httpx.Response:
+        for attempt in range(self.max_rate_limit_retries + 1):
+            response = self.client.post(url, json=payload, headers=headers)
+            if response.status_code != 429 or attempt == self.max_rate_limit_retries:
+                return response
+            time.sleep(self._rate_limit_delay(response, attempt))
+        raise RuntimeError("unreachable")
+
+    @staticmethod
+    def _rate_limit_delay(response: httpx.Response, attempt: int) -> float:
+        retry_after = response.headers.get("Retry-After")
+        if retry_after is not None:
+            try:
+                return max(0.0, min(float(retry_after), 60.0))
+            except ValueError:
+                pass
+
+        try:
+            details = response.json().get("error", {}).get("details", [])
+        except (ValueError, AttributeError):
+            details = []
+        for detail in details:
+            if not isinstance(detail, dict):
+                continue
+            retry_delay = detail.get("retryDelay")
+            if isinstance(retry_delay, str) and retry_delay.endswith("s"):
+                try:
+                    return max(0.0, min(float(retry_delay[:-1]), 60.0))
+                except ValueError:
+                    continue
+
+        return min(5.0 * (attempt + 1), 30.0)
